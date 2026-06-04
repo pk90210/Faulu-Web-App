@@ -39,7 +39,7 @@ def register():
         db.session.add(user)
         db.session.commit()
         login_user(user)
-        flash('Welcome to StudyFund! 🎉', 'success')
+        flash('Welcome to Faulu! 🎉', 'success')
         return redirect(url_for('dashboard.home'))
     return render_template('auth/register.html')
 
