@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Budget Planner{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 class="page-title">📋 Budget Planner</h1>
+        <p class="page-subtitle">Allocate and track your monthly budget</p>
+    </div>
+    <button onclick="openModal('addBudgetModal')" class="btn btn-primary">+ Add Category</button>
+</div>
+
+<!-- Month selector -->
+<div style="display:flex;gap:8px;margin-bottom:24px;overflow-x:auto;padding-bottom:4px;">
+    {% for m in months %}
+    <a href="{{ url_for('budget.index', month=m.month, year=m.year) }}"
+       class="btn {% if m.month == current_month and m.year == current_year %}btn-primary{% else %}btn-ghost{% endif %} btn-sm"
+       style="white-space:nowrap;">{{ m.label }}</a>
+    {% endfor %}
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-label">Total Allocated</div>
+        <div class="stat-value">KES {{ "{:,.0f}".format(total_allocated) }}</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value {% if total_spent > total_allocated %}red{% endif %}">KES {{ "{:,.0f}".format(total_spent) }}</div>
+    </div>
+    <div class="stat-card purple">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value green">KES {{ "{:,.0f}".format([total_allocated - total_spent, 0]|max) }}</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">% Used</div>
+        <div class="stat-value">{{ "{:.0f}".format((total_spent/total_allocated*100) if total_allocated > 0 else 0) }}%</div>
+    </div>
+</div>
+
+<!-- Income tip -->
+{% if income > 0 %}
+<div style="background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+    <span style="font-size:20px;">💡</span>
+    <div>
+        <span style="font-size:13px;color:var(--text-muted);">Monthly income: </span>
+        <strong style="color:var(--accent);">KES {{ "{:,.0f}".format(income) }}</strong>
+        <span style="font-size:13px;color:var(--text-muted);"> — Budgeted <strong style="color:var(--text);">{{ "{:.0f}".format((total_allocated/income*100) if income > 0 else 0) }}%</strong> of income</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Budget categories -->
+{% if budget_items %}
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Allocated</th>
+                <th>Spent</th>
+                <th>Remaining</th>
+                <th>Progress</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in budget_items %}
+            <tr>
+                <td>
+                    <span style="font-size:16px;margin-right:8px;">{{ item.icon }}</span>
+                    <strong>{{ item.category }}</strong>
+                </td>
+                <td style="color:var(--text-muted);">KES {{ "{:,.0f}".format(item.allocated) }}</td>
+                <td style="font-weight:600;color:{% if item.over_budget %}var(--red){% else %}var(--text){% endif %};">
+                    KES {{ "{:,.0f}".format(item.spent) }}
+                    {% if item.over_budget %}<span class="badge badge-red" style="margin-left:6px;">Over!</span>{% endif %}
+                </td>
+                <td style="color:{% if item.over_budget %}var(--red){% else %}var(--green){% endif %};">
+                    KES {{ "{:,.0f}".format(item.remaining) }}
+                </td>
+                <td style="min-width:120px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div class="progress-bar" style="flex:1;">
+                            <div class="progress-fill" style="width:{{ item.percentage }}%;background:{% if item.over_budget %}var(--red){% elif item.percentage > 80 %}var(--yellow){% else %}var(--green){% endif %};"></div>
+                        </div>
+                        <span style="font-size:11px;color:var(--text-muted);min-width:32px;">{{ item.percentage }}%</span>
+                    </div>
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('budget.delete', budget_id=item.id) }}" style="display:inline;" onsubmit="return confirm('Remove this budget category?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:60px 24px;">
+    <div style="font-size:48px;margin-bottom:16px;">📋</div>
+    <h3 style="font-family:'Syne',sans-serif;margin-bottom:8px;">No budget for this month</h3>
+    <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px;">Start by adding spending categories and amounts</p>
+    <button onclick="openModal('addBudgetModal')" class="btn btn-primary">+ Add First Category</button>
+</div>
+{% endif %}
+
+<!-- Add Budget Modal -->
+<div class="modal-overlay" id="addBudgetModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal('addBudgetModal')">✕</button>
+        <h3 class="modal-title">Add Budget Category</h3>
+        <form method="POST" action="{{ url_for('budget.add') }}">
+            <input type="hidden" name="month" value="{{ current_month }}">
+            <input type="hidden" name="year" value="{{ current_year }}">
+            <div class="form-group">
+                <label>Category</label>
+                <select name="category" required>
+                    <option value="">Select a category…</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Allocated Amount (KES)</label>
+                <input type="number" name="amount" placeholder="e.g. 5000" step="any" min="1" required>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Add Budget</button>
+                <button type="button" onclick="closeModal('addBudgetModal')" class="btn btn-ghost" style="flex:1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

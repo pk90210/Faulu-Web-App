@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Expenses{% endblock %}
+
+{% block extra_styles %}
+<style>
+.category-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 600;
+    cursor: pointer; text-decoration: none; border: 1px solid var(--border);
+    color: var(--text-muted); transition: all 0.2s;
+}
+.category-pill:hover, .category-pill.active {
+    background: rgba(0,212,170,0.1); border-color: rgba(0,212,170,0.3); color: var(--accent);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 class="page-title">🧾 Expense Tracker</h1>
+        <p class="page-subtitle">Log and track every purchase</p>
+    </div>
+    <button onclick="openModal('addExpenseModal')" class="btn btn-primary">+ Log Expense</button>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card red">
+        <div class="stat-label">This Month</div>
+        <div class="stat-value">KES {{ "{:,.0f}".format(monthly_total) }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Total spent</div>
+    </div>
+    <div class="stat-card purple">
+        <div class="stat-label">Categories</div>
+        <div class="stat-value">{{ category_totals|length }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Active this month</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">Largest Spend</div>
+        <div class="stat-value" style="font-size:18px;">
+            {% if category_totals %}
+                {% set top = category_totals | dictsort(by='value') | reverse | first %}
+                {{ top[0 ]}} — KES {{ "{:,.0f}".format(top[1]) }}
+            {% else %}—{% endif %}
+        </div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-label">Total Records</div>
+        <div class="stat-value">{{ expenses.total }}</div>
+    </div>
+</div>
+
+<!-- Category breakdown chips -->
+{% if category_totals %}
+<div style="margin-bottom:20px;">
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">This month by category</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <a href="{{ url_for('expenses.index') }}" class="category-pill {% if not category_filter %}active{% endif %}">All</a>
+        {% for cat, amt in category_totals.items() %}
+        <a href="{{ url_for('expenses.index', category=cat) }}" class="category-pill {% if category_filter == cat %}active{% endif %}">
+            {{ categories.get(cat, '📦') }} {{ cat }}
+            <span style="font-weight:700;color:var(--red);">KES {{ "{:,.0f}".format(amt) }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Expense list -->
+<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h2 class="card-title" style="margin:0;">
+            Transactions
+            {% if category_filter %}<span style="font-size:13px;color:var(--text-muted);font-weight:400;"> — {{ category_filter }}</span>{% endif %}
+        </h2>
+        <div style="display:flex;gap:8px;">
+            {% if category_filter %}
+            <a href="{{ url_for('expenses.index') }}" class="btn btn-ghost btn-sm">Clear Filter</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if expenses.items %}
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Note</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for expense in expenses.items %}
+            <tr>
+                <td><strong>{{ expense.description }}</strong></td>
+                <td>
+                    <span style="display:inline-flex;align-items:center;gap:6px;">
+                        {{ expense.category_icon }}
+                        <span style="font-size:12px;color:var(--text-muted);">{{ expense.category }}</span>
+                    </span>
+                </td>
+                <td style="color:var(--text-muted);font-size:13px;">{{ expense.date.strftime('%b %d, %Y') }}</td>
+                <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--red);">KES {{ "{:,.0f}".format(expense.amount) }}</td>
+                <td style="font-size:12px;color:var(--text-muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ expense.note or '—' }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('expenses.delete', expense_id=expense.id) }}" onsubmit="return confirm('Delete this expense?')">
+                        <button type="submit" class="btn btn-danger btn-sm">✕</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if expenses.pages > 1 %}
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:20px;">
+        {% if expenses.has_prev %}
+        <a href="{{ url_for('expenses.index', page=expenses.prev_num, category=category_filter) }}" class="btn btn-ghost btn-sm">← Prev</a>
+        {% endif %}
+        <span style="padding:6px 12px;font-size:13px;color:var(--text-muted);">{{ expenses.page }} / {{ expenses.pages }}</span>
+        {% if expenses.has_next %}
+        <a href="{{ url_for('expenses.index', page=expenses.next_num, category=category_filter) }}" class="btn btn-ghost btn-sm">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align:center;padding:48px 0;color:var(--text-muted);">
+        <div style="font-size:40px;margin-bottom:12px;">🧾</div>
+        <div style="font-size:15px;margin-bottom:16px;">No expenses found</div>
+        <button onclick="openModal('addExpenseModal')" class="btn btn-primary btn-sm">Log First Expense</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal-overlay" id="addExpenseModal">
+    <div class="modal" style="max-width:520px;">
+        <button class="modal-close" onclick="closeModal('addExpenseModal')">✕</button>
+        <h3 class="modal-title">Log Expense</h3>
+        <form method="POST" action="{{ url_for('expenses.add') }}">
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" placeholder="e.g. Lunch at cafeteria" required>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Amount (KES)</label>
+                    <input type="number" name="amount" placeholder="250" step="any" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" name="date" value="{{ now.strftime('%Y-%m-%d') if now else '' }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select name="category" required>
+                    <option value="">Select category…</option>
+                    {% for cat, icon in categories.items() %}
+                    <option value="{{ cat }}">{{ icon }} {{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Note (Optional)</label>
+                <input type="text" name="note" placeholder="Any extra details…">
+            </div>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Save Expense</button>
+                <button type="button" onclick="closeModal('addExpenseModal')" class="btn btn-ghost" style="flex:1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set today's date in the date field
+document.addEventListener('DOMContentLoaded', () => {
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    const today = new Date().toISOString().split('T')[0];
+    dateInputs.forEach(input => { if (!input.value) input.value = today; });
+});
+</script>
+{% endblock %}

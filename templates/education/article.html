@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+.article-body { line-height: 1.8; color: var(--text); }
+.article-body h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin: 24px 0 10px; color: var(--accent); }
+.article-body p { margin-bottom: 14px; font-size: 15px; color: #c8ccd8; }
+.article-body ul, .article-body ol { margin: 0 0 14px 20px; }
+.article-body li { margin-bottom: 6px; font-size: 15px; color: #c8ccd8; line-height: 1.7; }
+.article-body strong { color: var(--text); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;margin:0 auto;">
+    <!-- Breadcrumb -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;font-size:13px;color:var(--text-muted);">
+        <a href="{{ url_for('education.index') }}" style="color:var(--accent);text-decoration:none;">📚 Education</a>
+        <span>→</span>
+        <span>{{ article.category }}</span>
+    </div>
+
+    <!-- Article header -->
+    <div class="card" style="margin-bottom:24px;background:linear-gradient(135deg,rgba(0,212,170,0.05),rgba(124,106,255,0.05));">
+        <div style="font-size:48px;margin-bottom:12px;">{{ article.icon }}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+            <span class="badge badge-purple">{{ article.category }}</span>
+            <span class="badge {% if article.difficulty == 'Beginner' %}badge-green{% else %}badge-yellow{% endif %}">{{ article.difficulty }}</span>
+            <span style="font-size:12px;color:var(--text-muted);padding:3px 0;">⏱ {{ article.read_time }} min read</span>
+        </div>
+        <h1 style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;margin-bottom:10px;">{{ article.title }}</h1>
+        <p style="color:var(--text-muted);font-size:15px;">{{ article.summary }}</p>
+    </div>
+
+    <!-- Article content -->
+    <div class="card" style="margin-bottom:24px;">
+        <div class="article-body">{{ article.content|safe }}</div>
+    </div>
+
+    <!-- CTA -->
+    <div style="background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);border-radius:16px;padding:24px;margin-bottom:32px;text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">💡 Ready to apply this?</div>
+        <div style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">Put your new knowledge into practice with Faulu Finance's tools</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <a href="{{ url_for('budget.index') }}" class="btn btn-primary btn-sm">Open Budget Planner</a>
+            <a href="{{ url_for('savings.index') }}" class="btn btn-ghost btn-sm">View Savings Goals</a>
+            <a href="{{ url_for('simulator.index') }}" class="btn btn-ghost btn-sm">Try Simulator</a>
+        </div>
+    </div>
+
+    <!-- Related articles -->
+    {% if related %}
+    <div>
+        <h2 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;">Related Articles</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+            {% for r in related %}
+            <a href="{{ url_for('education.article', article_id=r.id) }}" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-decoration:none;color:var(--text);transition:border-color 0.2s;display:block;">
+                <div style="font-size:24px;margin-bottom:8px;">{{ r.icon }}</div>
+                <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;">{{ r.title }}</div>
+                <div style="font-size:12px;color:var(--text-muted);">⏱ {{ r.read_time }} min</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:24px;">
+        <a href="{{ url_for('education.index') }}" class="btn btn-ghost">← Back to all articles</a>
+    </div>
+</div>
+{% endblock %}

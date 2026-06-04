@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Investment Simulator{% endblock %}
+
+{% block extra_styles %}
+<style>
+.slider-group { margin-bottom: 20px; }
+.slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.slider-name { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.slider-value { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--accent); }
+input[type="range"] {
+    width: 100%; -webkit-appearance: none; height: 6px;
+    border-radius: 100px; background: var(--surface2); border: none; padding: 0; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: 2px solid var(--bg);
+}
+.result-highlight {
+    background: linear-gradient(135deg, rgba(0,212,170,0.1), rgba(124,106,255,0.1));
+    border: 1px solid rgba(0,212,170,0.2); border-radius: 12px; padding: 20px; text-align: center;
+}
+.result-number { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: var(--accent); letter-spacing: -1px; }
+.result-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">🚀 Investment Simulator</h1>
+    <p class="page-subtitle">See how compound interest grows your wealth over time</p>
+</div>
+
+<div class="grid-2" style="gap:24px;align-items:start;">
+    <!-- Controls -->
+    <div class="card">
+        <h2 class="card-title">Simulation Parameters</h2>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="slider-name">Initial Investment</span>
+                <span class="slider-value" id="initVal">KES 10,000</span>
+            </div>
+            <input type="range" id="initial" min="0" max="500000" step="1000" value="10000">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="slider-name">Monthly Contribution</span>
+                <span class="slider-value" id="monthlyVal">KES 1,000</span>
+            </div>
+            <input type="range" id="monthly" min="0" max="50000" step="500" value="1000">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="slider-name">Annual Return Rate</span>
+                <span class="slider-value" id="rateVal">10%</span>
+            </div>
+            <input type="range" id="rate" min="1" max="30" step="0.5" value="10">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="slider-name">Investment Period</span>
+                <span class="slider-value" id="yearsVal">10 years</span>
+            </div>
+            <input type="range" id="years" min="1" max="40" step="1" value="10">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label">
+                <span class="slider-name">Inflation Rate</span>
+                <span class="slider-value" id="inflationVal">5%</span>
+            </div>
+            <input type="range" id="inflation" min="0" max="20" step="0.5" value="5">
+        </div>
+
+        <!-- Preset Scenarios -->
+        <div style="margin-top:16px;">
+            <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Quick Scenarios</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <button onclick="setScenario(5000, 500, 8, 5, 5)" class="btn btn-ghost btn-sm">🎓 Student Saver</button>
+                <button onclick="setScenario(20000, 3000, 12, 10, 5)" class="btn btn-ghost btn-sm">💼 Young Graduate</button>
+                <button onclick="setScenario(50000, 10000, 15, 20, 5)" class="btn btn-ghost btn-sm">🚀 Aggressive Growth</button>
+                <button onclick="setScenario(10000, 1000, 5, 30, 5)" class="btn btn-ghost btn-sm">🛡️ Conservative</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div>
+        <!-- Summary cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="result-highlight">
+                <div class="result-number" id="finalBalance">—</div>
+                <div class="result-label">Final Balance</div>
+            </div>
+            <div class="result-highlight" style="background:rgba(124,106,255,0.1);border-color:rgba(124,106,255,0.2);">
+                <div class="result-number" style="color:var(--purple);" id="totalInterest">—</div>
+                <div class="result-label">Interest Earned</div>
+            </div>
+            <div class="result-highlight" style="background:rgba(255,209,102,0.08);border-color:rgba(255,209,102,0.2);">
+                <div class="result-number" style="color:var(--yellow);" id="totalInvested">—</div>
+                <div class="result-label">Total Invested</div>
+            </div>
+            <div class="result-highlight" style="background:rgba(255,107,107,0.08);border-color:rgba(255,107,107,0.2);">
+                <div class="result-number" style="color:var(--red);" id="growthMultiple">—</div>
+                <div class="result-label">Growth Multiple</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="card">
+            <h2 class="card-title">Growth Over Time</h2>
+            <canvas id="growthChart" height="250"></canvas>
+            <div style="display:flex;gap:16px;margin-top:12px;justify-content:center;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">
+                    <div style="width:12px;height:3px;background:var(--accent);border-radius:2px;"></div> Nominal Value
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">
+                    <div style="width:12px;height:3px;background:var(--purple);border-radius:2px;border:1px dashed var(--purple);"></div> Real Value (inflation-adjusted)
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Year table -->
+<div class="card" style="margin-top:24px;">
+    <h2 class="card-title">Year-by-Year Breakdown</h2>
+    <div style="overflow-x:auto;">
+        <table id="yearTable">
+            <thead>
+                <tr>
+                    <th>Year</th>
+                    <th>Nominal Value</th>
+                    <th>Real Value (Inflation-adj.)</th>
+                    <th>Gain vs Invested</th>
+                </tr>
+            </thead>
+            <tbody id="yearTableBody"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chart = null;
+
+function fmt(num) {
+    return 'KES ' + Math.round(num).toLocaleString();
+}
+
+async function simulate() {
+    const initial = +document.getElementById('initial').value;
+    const monthly = +document.getElementById('monthly').value;
+    const rate = +document.getElementById('rate').value;
+    const years = +document.getElementById('years').value;
+    const inflation = +document.getElementById('inflation').value;
+
+    const res = await fetch('/simulator/calculate', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({initial, monthly, rate, years, inflation})
+    });
+    const data = await res.json();
+    const { results, summary } = data;
+
+    // Update cards
+    document.getElementById('finalBalance').textContent = fmt(summary.final_balance);
+    document.getElementById('totalInterest').textContent = fmt(summary.total_interest);
+    document.getElementById('totalInvested').textContent = fmt(summary.total_invested);
+    document.getElementById('growthMultiple').textContent = summary.growth_multiple.toFixed(1) + '×';
+
+    // Update chart
+    const labels = results.map(r => `Year ${r.year}`);
+    const nominalData = results.map(r => r.nominal);
+    const realData = results.map(r => r.real);
+
+    if (chart) chart.destroy();
+    const ctx = document.getElementById('growthChart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Nominal', data: nominalData,
+                    borderColor: '#00d4aa', backgroundColor: 'rgba(0,212,170,0.08)',
+                    borderWidth: 2.5, fill: true, tension: 0.4, pointRadius: 3,
+                    pointBackgroundColor: '#00d4aa'
+                },
+                {
+                    label: 'Real (inflation-adj.)', data: realData,
+                    borderColor: '#7c6aff', backgroundColor: 'transparent',
+                    borderWidth: 2, borderDash: [5,5], fill: false, tension: 0.4, pointRadius: 2,
+                    pointBackgroundColor: '#7c6aff'
+                }
+            ]
+        },
+        options: {
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.parsed.y)}` } } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7fa0', font: { size: 11 }, maxTicksLimit: 8 } },
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b7fa0', font: { size: 11 }, callback: v => 'KES ' + (v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v) } }
+            }
+        }
+    });
+
+    // Update table
+    const tbody = document.getElementById('yearTableBody');
+    const totalInv = initial + (monthly * 12 * years);
+    tbody.innerHTML = results.map(r => {
+        const invested = initial + (monthly * 12 * r.year);
+        const gain = r.nominal - invested;
+        return `<tr>
+            <td style="font-family:'Syne',sans-serif;font-weight:700;">Year ${r.year}</td>
+            <td style="color:var(--accent);font-weight:600;">${fmt(r.nominal)}</td>
+            <td style="color:var(--purple);">${fmt(r.real)}</td>
+            <td style="color:${gain >= 0 ? 'var(--green)' : 'var(--red)'};">${gain >= 0 ? '+' : ''}${fmt(gain)}</td>
+        </tr>`;
+    }).join('');
+}
+
+function updateSliderDisplays() {
+    document.getElementById('initVal').textContent = 'KES ' + (+document.getElementById('initial').value).toLocaleString();
+    document.getElementById('monthlyVal').textContent = 'KES ' + (+document.getElementById('monthly').value).toLocaleString();
+    document.getElementById('rateVal').textContent = document.getElementById('rate').value + '%';
+    document.getElementById('yearsVal').textContent = document.getElementById('years').value + ' years';
+    document.getElementById('inflationVal').textContent = document.getElementById('inflation').value + '%';
+}
+
+['initial','monthly','rate','years','inflation'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+        updateSliderDisplays();
+        simulate();
+    });
+});
+
+function setScenario(init, mo, rt, yrs, inf) {
+    document.getElementById('initial').value = init;
+    document.getElementById('monthly').value = mo;
+    document.getElementById('rate').value = rt;
+    document.getElementById('years').value = yrs;
+    document.getElementById('inflation').value = inf;
+    updateSliderDisplays();
+    simulate();
+}
+
+// Initial run
+simulate();
+</script>
+{% endblock %}

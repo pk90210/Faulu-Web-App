@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Savings Goals{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 class="page-title">🎯 Savings Goals</h1>
+        <p class="page-subtitle">Track your progress toward every goal</p>
+    </div>
+    <button onclick="openModal('addGoalModal')" class="btn btn-primary">+ New Goal</button>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-label">Total Saved</div>
+        <div class="stat-value green">KES {{ "{:,.0f}".format(total_saved) }}</div>
+    </div>
+    <div class="stat-card purple">
+        <div class="stat-label">Total Target</div>
+        <div class="stat-value">KES {{ "{:,.0f}".format(total_target) }}</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">Still Needed</div>
+        <div class="stat-value">KES {{ "{:,.0f}".format([total_target - total_saved, 0]|max) }}</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Active Goals</div>
+        <div class="stat-value">{{ active_goals|length }}</div>
+    </div>
+</div>
+
+<!-- Active Goals -->
+{% if active_goals %}
+<h2 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;">Active Goals</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:32px;">
+    {% for goal in active_goals %}
+    <div class="card" style="position:relative;overflow:hidden;border-top:3px solid {{ goal.color }};">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
+            <div>
+                <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;">{{ goal.name }}</div>
+                {% if goal.target_date %}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Target: {{ goal.target_date.strftime('%b %d, %Y') }}</div>
+                {% endif %}
+            </div>
+            <span class="badge badge-green" style="font-size:13px;padding:4px 12px;">{{ goal.progress_percentage }}%</span>
+        </div>
+
+        <div class="progress-bar" style="margin-bottom:10px;height:10px;">
+            <div class="progress-fill" style="width:{{ goal.progress_percentage }}%;background:{{ goal.color }};"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
+            <div>
+                <div style="font-size:18px;font-family:'Syne',sans-serif;font-weight:800;color:var(--accent);">KES {{ "{:,.0f}".format(goal.current_amount) }}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Saved so far</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:18px;font-family:'Syne',sans-serif;font-weight:800;">KES {{ "{:,.0f}".format(goal.target_amount) }}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Goal</div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+            <button onclick="openDeposit({{ goal.id }}, '{{ goal.name }}')" class="btn btn-primary btn-sm" style="flex:1;">+ Deposit</button>
+            <form method="POST" action="{{ url_for('savings.delete', goal_id=goal.id) }}" onsubmit="return confirm('Delete this goal?')">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:60px 24px;margin-bottom:24px;">
+    <div style="font-size:48px;margin-bottom:16px;">🎯</div>
+    <h3 style="font-family:'Syne',sans-serif;margin-bottom:8px;">No savings goals yet</h3>
+    <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px;">Create your first goal — a laptop, a trip, or your emergency fund</p>
+    <button onclick="openModal('addGoalModal')" class="btn btn-primary">Create First Goal</button>
+</div>
+{% endif %}
+
+<!-- Completed Goals -->
+{% if completed_goals %}
+<h2 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:16px;">🎉 Completed Goals</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+    {% for goal in completed_goals %}
+    <div class="card" style="border:1px solid rgba(0,212,170,0.3);background:rgba(0,212,170,0.05);opacity:0.8;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="font-size:22px;margin-bottom:4px;">{{ goal.icon }}</div>
+                <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">{{ goal.name }}</div>
+                <div style="font-size:12px;color:var(--accent);margin-top:2px;">KES {{ "{:,.0f}".format(goal.target_amount) }} ✓ Achieved</div>
+            </div>
+            <span style="font-size:32px;">🏆</span>
+        </div>
+        <div style="margin-top:10px;">
+            <form method="POST" action="{{ url_for('savings.delete', goal_id=goal.id) }}" onsubmit="return confirm('Remove completed goal?')">
+                <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Add Goal Modal -->
+<div class="modal-overlay" id="addGoalModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal('addGoalModal')">✕</button>
+        <h3 class="modal-title">Create Savings Goal</h3>
+        <form method="POST" action="{{ url_for('savings.add') }}">
+            <div class="form-group">
+                <label>Goal Name</label>
+                <input type="text" name="name" placeholder="e.g. New Laptop, Emergency Fund..." required>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Target Amount (KES)</label>
+                    <input type="number" name="target_amount" placeholder="50000" step="any" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Already Saved (KES)</label>
+                    <input type="number" name="current_amount" placeholder="0" step="any" min="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Target Date (Optional)</label>
+                <input type="date" name="target_date">
+            </div>
+            <div style="display:grid;grid-template-columns:8fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="color" name="color" value="#00d4aa" style="height:43px;padding:6px;">
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Create Goal</button>
+                <button type="button" onclick="closeModal('addGoalModal')" class="btn btn-ghost" style="flex:1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Deposit Modal -->
+<div class="modal-overlay" id="depositModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal('depositModal')">✕</button>
+        <h3 class="modal-title" id="depositTitle">Add Deposit</h3>
+        <form id="depositForm" method="POST">
+            <div class="form-group">
+                <label>Amount to Deposit (KES)</label>
+                <input type="number" name="amount" placeholder="500" step="any" min="1" required>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">💰 Add Deposit</button>
+                <button type="button" onclick="closeModal('depositModal')" class="btn btn-ghost" style="flex:1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openDeposit(goalId, goalName) {
+    document.getElementById('depositTitle').textContent = `Deposit to "${goalName}"`;
+    document.getElementById('depositForm').action = `/savings/deposit/${goalId}`;
+    openModal('depositModal');
+}
+</script>
+{% endblock %}

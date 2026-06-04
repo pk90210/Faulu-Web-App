@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1 class="page-title">Good day, {{ current_user.username }} 👋</h1>
+        <p class="page-subtitle">Financial overview for {{ month_name }}</p>
+    </div>
+    {% if income == 0 %}
+    <form method="POST" action="{{ url_for('dashboard.settings') }}" style="display:flex;gap:8px;align-items:center;">
+        <input type="number" name="monthly_income" placeholder="Set monthly income (KES)" step="any" min="0" style="width:240px;">
+        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+    </form>
+    {% else %}
+    <div style="display:flex;align-items:center;gap:8px;">
+        <span style="color:var(--text-muted);font-size:13px;">Monthly income:</span>
+        <span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent);">KES {{ "{:,.0f}".format(income) }}</span>
+        <button onclick="openModal('incomeModal')" class="btn btn-ghost btn-sm">Edit</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid">
+    <div class="stat-card green">
+        <div class="stat-label">Total Budgeted</div>
+        <div class="stat-value">KES {{ "{:,.0f}".format(total_budgeted) }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">This month</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value {% if total_spent > total_budgeted %}red{% endif %}">KES {{ "{:,.0f}".format(total_spent) }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">This month</div>
+    </div>
+    <div class="stat-card purple">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value green">KES {{ "{:,.0f}".format(remaining) }}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Available</div>
+    </div>
+    <div class="stat-card yellow">
+        <div class="stat-label">Budget Health</div>
+        <div class="stat-value" style="font-size:22px;">
+            {% if total_budgeted == 0 %}—
+            {% elif total_spent <= total_budgeted * 0.7 %}🟢 Great
+            {% elif total_spent <= total_budgeted %}🟡 OK
+            {% else %}🔴 Over
+            {% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+            {% if total_budgeted > 0 %}{{ "{:.0f}".format((total_spent/total_budgeted)*100) }}% used{% else %}No budget set{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Main Grid -->
+<div class="grid-2" style="margin-bottom:24px;">
+    <!-- Budget Breakdown -->
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">Budget Categories</h2>
+            <a href="{{ url_for('budget.index') }}" class="btn btn-ghost btn-sm">Manage →</a>
+        </div>
+        {% if budget_data %}
+            {% for item in budget_data %}
+            <div style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;font-weight:500;">{{ item.icon }} {{ item.category }}</span>
+                    <div style="text-align:right;">
+                        <span style="font-size:13px;font-weight:600;color:{% if item.over_budget %}var(--red){% else %}var(--text){% endif %};">KES {{ "{:,.0f}".format(item.spent) }}</span>
+                        <span style="font-size:11px;color:var(--text-muted);"> / {{ "{:,.0f}".format(item.allocated) }}</span>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:{{ item.percentage }}%;background:{% if item.over_budget %}var(--red){% elif item.percentage > 80 %}var(--yellow){% else %}var(--green){% endif %};"></div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center;padding:32px 0;color:var(--text-muted);">
+                <div style="font-size:32px;margin-bottom:8px;">📋</div>
+                <div style="font-size:14px;margin-bottom:12px;">No budget set for this month</div>
+                <a href="{{ url_for('budget.index') }}" class="btn btn-primary btn-sm">Create Budget</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Expense Chart -->
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">Spending Breakdown</h2>
+            <a href="{{ url_for('expenses.index') }}" class="btn btn-ghost btn-sm">All Expenses →</a>
+        </div>
+        {% if total_spent > 0 %}
+            <canvas id="expenseChart" height="220"></canvas>
+        {% else %}
+            <div style="text-align:center;padding:32px 0;color:var(--text-muted);">
+                <div style="font-size:32px;margin-bottom:8px;">🧾</div>
+                <div style="font-size:14px;margin-bottom:12px;">No expenses logged yet</div>
+                <a href="{{ url_for('expenses.index') }}" class="btn btn-primary btn-sm">Log Expense</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Savings Goals -->
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">Savings Goals</h2>
+            <a href="{{ url_for('savings.index') }}" class="btn btn-ghost btn-sm">View All →</a>
+        </div>
+        {% if savings_goals %}
+            {% for goal in savings_goals %}
+            <div style="margin-bottom:16px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:14px;font-weight:600;">{{ goal.icon }} {{ goal.name }}</span>
+                    <span class="badge badge-green">{{ goal.progress_percentage }}%</span>
+                </div>
+                <div class="progress-bar" style="margin-bottom:6px;">
+                    <div class="progress-fill" style="width:{{ goal.progress_percentage }}%;background:{{ goal.color }};"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">
+                    <span>KES {{ "{:,.0f}".format(goal.current_amount) }} saved</span>
+                    <span>KES {{ "{:,.0f}".format(goal.remaining) }} left</span>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center;padding:32px 0;color:var(--text-muted);">
+                <div style="font-size:32px;margin-bottom:8px;">🎯</div>
+                <div style="font-size:14px;margin-bottom:12px;">No savings goals yet</div>
+                <a href="{{ url_for('savings.index') }}" class="btn btn-primary btn-sm">Create Goal</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Expenses -->
+    <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">Recent Expenses</h2>
+            <a href="{{ url_for('expenses.index') }}" class="btn btn-ghost btn-sm">All →</a>
+        </div>
+        {% if recent_expenses %}
+            {% for expense in recent_expenses %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:20px;">{{ expense.category_icon }}</span>
+                    <div>
+                        <div style="font-size:13px;font-weight:500;">{{ expense.description }}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">{{ expense.category }} · {{ expense.date.strftime('%b %d') }}</div>
+                    </div>
+                </div>
+                <span style="font-size:14px;font-weight:700;color:var(--red);">-KES {{ "{:,.0f}".format(expense.amount) }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center;padding:32px 0;color:var(--text-muted);">
+                <div style="font-size:32px;margin-bottom:8px;">📭</div>
+                <div style="font-size:14px;">No recent expenses</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Income Edit Modal -->
+<div class="modal-overlay" id="incomeModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeModal('incomeModal')">✕</button>
+        <h3 class="modal-title">Update Monthly Income</h3>
+        <form method="POST" action="{{ url_for('dashboard.settings') }}">
+            <div class="form-group">
+                <label>Monthly Income (KES)</label>
+                <input type="number" name="monthly_income" value="{{ income }}" step="any" min="0" required>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">Save</button>
+                <button type="button" onclick="closeModal('incomeModal')" class="btn btn-ghost" style="flex:1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if total_spent > 0 and budget_data %}
+<script>
+const ctx = document.getElementById('expenseChart');
+const data = {
+    labels: [{% for item in budget_data if item.spent > 0 %}'{{ item.icon }} {{ item.category }}',{% endfor %}],
+    datasets: [{
+        data: [{% for item in budget_data if item.spent > 0 %}{{ item.spent }},{% endfor %}],
+        backgroundColor: ['#00d4aa','#7c6aff','#ff6b6b','#ffd166','#06d6a0','#118ab2','#ef476f','#ffd60a'],
+        borderWidth: 0,
+        hoverOffset: 6
+    }]
+};
+new Chart(ctx, {
+    type: 'doughnut',
+    data: data,
+    options: {
+        plugins: {
+            legend: { position: 'bottom', labels: { color: '#6b7fa0', font: { family: 'DM Sans', size: 12 }, padding: 12, boxWidth: 12 } },
+            tooltip: { callbacks: { label: (c) => ` KES ${c.parsed.toLocaleString()}` } }
+        },
+        cutout: '65%'
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
