@@ -1,6 +1,6 @@
-# 💰 StudyFund — Student Money Management App
+# 💰 Faulu Finance - Money Management App
 
-A full-featured personal finance web app built for students, powered by Python, Flask, and PostgreSQL.
+A full-featured personal finance web app built for money management, powered by Python, Flask, and PostgreSQL.
 
 ---
 
