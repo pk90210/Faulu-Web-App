@@ -23,20 +23,6 @@ A full-featured personal finance web app built for students, powered by Python, 
 - **Frontend**: Jinja2 templates, Chart.js, vanilla CSS/JS (no frontend framework)
 - **Auth**: Flask-Login with bcrypt password hashing (Werkzeug)
 
----
-
-## Quick Start (Docker — Recommended)
-
-```bash
-# Clone / unzip project
-cd student-finance
-
-# Start PostgreSQL + Flask app
-docker-compose up --build
-
-# Open in browser
-open http://localhost:5000
-```
 
 ---
 
