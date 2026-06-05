@@ -32,7 +32,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 <div class="grid-2" style="gap:24px;align-items:start;">
     <!-- Controls -->
-    <div class="card">
+    <div class="card" style="height: 880px;">
         <h2 class="card-title">Simulation Parameters</h2>
 
         <div class="slider-group">
@@ -48,7 +48,7 @@ input[type="range"]::-webkit-slider-thumb {
                 <span class="slider-name">Monthly Contribution</span>
                 <span class="slider-value" id="monthlyVal">KES 1,000</span>
             </div>
-            <input type="range" id="monthly" min="0" max="50000" step="500" value="1000">
+            <input type="range" id="monthly" min="0" max="50000" step="100" value="1000">
         </div>
 
         <div class="slider-group">
@@ -70,14 +70,14 @@ input[type="range"]::-webkit-slider-thumb {
         <div class="slider-group">
             <div class="slider-label">
                 <span class="slider-name">Inflation Rate</span>
-                <span class="slider-value" id="inflationVal">5%</span>
+                <span class="slider-value" id="inflationVal">3.8%</span>
             </div>
             <input type="range" id="inflation" min="0" max="20" step="0.5" value="5">
         </div>
 
         <!-- Preset Scenarios -->
         <div style="margin-top:16px;">
-            <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Quick Scenarios</div>
+            <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px;">Quick Scenarios</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;">
                 <button onclick="setScenario(5000, 500, 8, 5, 5)" class="btn btn-ghost btn-sm">🎓 Student Saver</button>
                 <button onclick="setScenario(20000, 3000, 12, 10, 5)" class="btn btn-ghost btn-sm">💼 Young Graduate</button>
@@ -135,7 +135,7 @@ input[type="range"]::-webkit-slider-thumb {
                     <th>Year</th>
                     <th>Nominal Value</th>
                     <th>Real Value (Inflation-adj.)</th>
-                    <th>Gain vs Invested</th>
+                    <th>Profit</th>
                 </tr>
             </thead>
             <tbody id="yearTableBody"></tbody>

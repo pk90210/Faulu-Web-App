@@ -30,7 +30,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
-        from models.education import seed_articles  # ✅ import INSIDE context
+        from models.education import seed_articles  
         seed_articles()
 
     return app
